@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Saved Characters - A Fortaleza</title>
+  <style>
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: #fff;
+      color: #3ab0ff;
+      max-width: 800px;
+      margin: 2rem auto;
+    }
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 2rem;
+    }
+    .character {
+      border: 2px solid #3ab0ff;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 10px;
+      background: #f9faff;
+    }
+    .character p {
+      margin: 0.5rem 0;
+      font-size: 1.2rem;
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 2px solid #3ab0ff;
+      background: transparent;
+      color: #3ab0ff;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    button:hover {
+      background: #3ab0ff;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<h1>📜 Saved Characters</h1>
+<div id="list"></div>
+<button onclick="clearAll()">🗑 Clear All</button>
+<button onclick="location.href='index.html'">↩ Back</button>
+
+<script>
+const stats = ['Strength', 'Agility', 'Perception', 'Toughness', 'Charisma', 'Fate'];
+const resources = ['HP', 'AP', 'Fate'];
+
+const list = document.getElementById('list');
+const saved = JSON.parse(localStorage.getItem('savedCharacters') || '[]');
+
+function roll(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
+function createButton(text, onClick) {
+  const btn = document.createElement('button');
+  btn.textContent = text;
+  btn.onclick = onClick;
+  return btn;
+}
+
+function updateDisplay(character, res, displayEl) {
+  displayEl.textContent = `${res}: ${character['Current' + res]}/${character['Max' + res]}`;
+}
+
+function showRollResult(stat, character, span) {
+  const statValue = character[stat];
+  const rollValue = roll(20);
+  const total = rollValue + statValue;
+
+  span.textContent = `(1d20=${rollValue} → Total: ${total})`;
+  span.className = 'roll-result';
+  if (rollValue === 20) span.classList.add('crit-hit');
+  if (rollValue === 1) span.classList.add('crit-fail');
+}
+
+if (saved.length === 0) {
+  list.innerHTML = "<p>No characters saved.</p>";
+} else {
+  saved.forEach((char, idx) => {
+    const div = document.createElement('div');
+    div.className = 'character';
+
+    // CHARACTER INFO
+    ['Name', 'Background', 'Weapon', 'Motivation', 'Backstory'].forEach(key => {
+      const p = document.createElement('p');
+      p.textContent = `${key}: ${char[key]}`;
+      div.appendChild(p);
+    });
+
+    // RESOURCES SECTION
+    const resHeader = document.createElement('h3');
+    resHeader.textContent = 'Resources';
+    div.appendChild(resHeader);
+
+    resources.forEach(res => {
+      const container = document.createElement('p');
+
+      const display = document.createElement('span');
+      display.style.flex = '1';
+      updateDisplay(char, res, display);
+
+      const minus = createButton('-', () => {
+        if (char['Current' + res] > 0) char['Current' + res]--;
+        updateDisplay(char, res, display);
+      });
+      const plus = createButton('+', () => {
+        if (char['Current' + res] < char['Max' + res]) char['Current' + res]++;
+        updateDisplay(char, res, display);
+      });
+
+      container.append(display, minus, plus);
+      div.appendChild(container);
+    });
+
+    // STATS SECTION
+    const statHeader = document.createElement('h3');
+    statHeader.textContent = 'Stats';
+    div.appendChild(statHeader);
+
+    stats.forEach(stat => {
+      const p = document.createElement('p');
+      p.style.display = 'flex';
+      p.style.alignItems = 'center';
+
+      const label = document.createElement('span');
+      label.style.flex = '1';
+      label.textContent = `${stat}: ${char[stat]}`;
+
+      const result = document.createElement('span');
+      result.className = 'roll-result';
+      result.style.flex = '2';
+
+      const rollBtn = createButton('🎲', () => showRollResult(stat, char, result));
+      const advBtn = createButton('👍', () => {
+        const r1 = roll(20), r2 = roll(20);
+        const best = Math.max(r1, r2);
+        const total = best + char[stat];
+        result.textContent = `(Adv: ${r1} & ${r2} → ${best} → Total: ${total})`;
+        result.className = 'roll-result';
+        if (best === 20) result.classList.add('crit-hit');
+        if (best === 1) result.classList.add('crit-fail');
+      });
+      const disBtn = createButton('👎', () => {
+        const r1 = roll(20), r2 = roll(20);
+        const worst = Math.min(r1, r2);
+        const total = worst + char[stat];
+        result.textContent = `(Dis: ${r1} & ${r2} → ${worst} → Total: ${total})`;
+        result.className = 'roll-result';
+        if (worst === 20) result.classList.add('crit-hit');
+        if (worst === 1) result.classList.add('crit-fail');
+      });
+
+      const btnGroup = document.createElement('span');
+      btnGroup.append(rollBtn, advBtn, disBtn);
+
+      p.append(label, btnGroup, result);
+      div.appendChild(p);
+    });
+
+    // DELETE BUTTON
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '❌ Delete';
+    deleteBtn.onclick = () => {
+      saved.splice(idx, 1);
+      localStorage.setItem('savedCharacters', JSON.stringify(saved));
+      location.reload();
+    };
+    div.appendChild(deleteBtn);
+
+    list.appendChild(div);
+  });
+}
+
+function clearAll() {
+  if (confirm("Clear all saved characters?")) {
+    localStorage.removeItem('savedCharacters');
+    location.reload();
+  }
+}
+</script>
+
+</body>
+</html>
