@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>A Fortaleza - Character Generator</title>
+
+<style>
+  body {
+  font-family: 'Courier New', Courier, monospace;
+  max-width: 600px;
+  margin: 2rem auto;
+  background: #fff;
+  color: #3ab0ff; /* light blue */
+  user-select: none;
+  font-size: 18px; /* base font size bumped */
+}
+
+h1, h2 {
+  text-align: center;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+h2 {
+  font-weight: 400;
+  color: #58c1ff;
+  margin-bottom: 2.5rem;
+  font-size: 1.8rem;
+}
+
+#output {
+  background: #f9faff;
+  border: 2px solid #3ab0ff;
+  border-radius: 10px;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 0 20px #3ab0ff55;
+}
+
+p.section-header {
+  font-weight: 700;
+  font-size: 1.7rem;
+  margin-top: 2.5rem;
+  border-bottom: 2px solid #3ab0ff;
+  padding-bottom: 0.4rem;
+  letter-spacing: 2px;
+}
+
+p {
+  margin: 0.75rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.5rem;
+}
+
+.stat-label {
+  flex-grow: 1;
+  font-weight: 600;
+  color: #58c1ff;
+}
+
+.stat-value {
+  min-width: 5rem;
+  text-align: right;
+  font-weight: 700;
+}
+
+.roll-buttons button {
+  margin-left: 0.6rem;
+  padding: 0.6rem 1rem;
+  font-size: 1.5rem;
+  border: 2px solid #3ab0ff;
+  background: transparent;
+  color: #3ab0ff;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+}
+.roll-buttons button:hover {
+  background-color: #3ab0ff;
+  color: #fff;
+}
+
+.roll-result {
+  margin-left: 1.2rem;
+  font-style: italic;
+  font-size: 1.3rem;
+  flex-grow: 2;
+  color: #7ed1ff;
+}
+
+.roll-result.crit-hit {
+  color: #0099ff;
+  font-weight: 700;
+}
+
+.roll-result.crit-fail {
+  color: #ff5555;
+  font-weight: 700;
+}
+
+.resource-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.resource-controls span {
+  font-weight: 700;
+  min-width: 7.5rem;
+  font-size: 1.7rem;
+  text-align: center;
+}
+
+.resource-controls button {
+  margin-left: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 1.5rem;
+  border: 2px solid #3ab0ff;
+  background: transparent;
+  color: #3ab0ff;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: background-color 0.3s ease;
+}
+.resource-controls button:hover {
+  background-color: #3ab0ff;
+  color: #fff;
+}
+
+/* Top buttons */
+button#downloadPDF,
+button#clearResults,
+button[onclick] {
+  margin: 0 0.6rem 1.5rem 0.6rem;
+  font-size: 1.5rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: 10px;
+  border: 2px solid #3ab0ff;
+  background: transparent;
+  color: #3ab0ff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+button#downloadPDF:hover,
+button#clearResults:hover,
+button[onclick]:hover {
+  background-color: #3ab0ff;
+  color: #fff;
+}
+
+
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<h1>A Fortaleza</h1>
+<h2>Dungeon Dweller</h2>
+
+<button onclick="location.reload()">🔁 Reroll</button>
+<button id="downloadPDF">📄 Save as PDF</button>
+<button id="clearResults">🧹 Clear Results</button>
+
+<div id="output"></div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+const stats = ['Strength', 'Agility', 'Perception', 'Toughness', 'Charisma', 'Fate'];
+const resources = ['HP', 'AP', 'Fate'];
+
+const data = {
+  Name: rand(['Rui', 'Bruno', 'Rodrigo', 'José','João', 'Miguel']),
+  Background: rand(['Hunter', 'Soldier']),
+  Weapon: rand(['Pistol 1AP shooting 3AP reload 2d4 piercing damage', 'Musket 1AP shooting 3AP reload 2d8 piercing damage']),
+  Motivation: rand(['Needs money', 'Seek glory']),
+  Backstorie: rand(['A thief', 'A banker', 'Political refugee']),
+};
+
+// Roll base stats
+stats.forEach(stat => data[stat] = roll(6));
+
+// Derived resources
+data.MaxHP = data.Toughness + roll(6) + roll(6);
+data.CurrentHP = data.MaxHP;
+
+data.MaxAP = data.Agility;
+data.CurrentAP = data.MaxAP;
+
+data.MaxFate = data.Fate;
+data.CurrentFate = data.MaxFate;
+
+const out = document.getElementById('output');
+
+function createButton(text, onClick) {
+  const btn = document.createElement('button');
+  btn.textContent = text;
+  btn.onclick = onClick;
+  return btn;
+}
+
+function showRollResult(stat, rollValue, isAdvantage, roll1, roll2) {
+  const statValue = data[stat];
+  let total = rollValue + statValue;
+  let msg = '';
+
+  if (isAdvantage === undefined) {
+    msg = `(1d20=${rollValue} → Total: ${total})`;
+  } else {
+    msg = isAdvantage
+      ? `(Adv: ${roll1} & ${roll2} → ${rollValue} → Total: ${total})`
+      : `(Dis: ${roll1} & ${roll2} → ${rollValue} → Total: ${total})`;
+  }
+
+  const resultSpan = document.querySelector(`#output span[data-stat="${stat}"]`);
+  if (!resultSpan) return;
+
+  resultSpan.textContent = msg;
+
+  resultSpan.classList.remove('crit-hit', 'crit-fail');
+  if (rollValue === 20) resultSpan.classList.add('crit-hit');
+  else if (rollValue === 1) resultSpan.classList.add('crit-fail');
+}
+
+function createRollButtons(stat) {
+  const container = document.createElement('span');
+  container.className = 'roll-buttons';
+
+  const rollBtn = createButton('🎲', () => showRollResult(stat, roll(20)));
+  const advBtn = createButton('👍', () => {
+    const r1 = roll(20);
+    const r2 = roll(20);
+    showRollResult(stat, Math.max(r1, r2), true, r1, r2);
+  });
+  const disBtn = createButton('👎', () => {
+    const r1 = roll(20);
+    const r2 = roll(20);
+    showRollResult(stat, Math.min(r1, r2), false, r1, r2);
+  });
+
+  container.append(rollBtn, advBtn, disBtn);
+  return container;
+}
+
+function updateDisplay(res) {
+  const el = document.getElementById(`${res.toLowerCase()}Display`);
+  el.textContent = `${res}: ${data['Current' + res]}/${data['Max' + res]}`;
+}
+
+out.innerHTML = ''; // Clear output on load
+
+// Character Info
+const charInfoKeys = ['Name', 'Background', 'Weapon', 'Motivation', 'Backstorie'];
+const charInfoHeader = document.createElement('p');
+charInfoHeader.className = 'section-header';
+charInfoHeader.textContent = 'Character Info';
+out.appendChild(charInfoHeader);
+
+charInfoKeys.forEach(key => {
+  const p = document.createElement('p');
+  p.textContent = `${key}: ${data[key]}`;
+  out.appendChild(p);
+});
+
+// Resources (HP, AP, Fate) ON TOP
+const resHeader = document.createElement('p');
+resHeader.className = 'section-header';
+resHeader.textContent = 'Resources';
+out.appendChild(resHeader);
+
+const resourceControls = document.createElement('div');
+resourceControls.className = 'resource-controls';
+
+resources.forEach(res => {
+  const container = document.createElement('span');
+
+  const display = document.createElement('span');
+  display.id = `${res.toLowerCase()}Display`;
+  display.textContent = `${res}: ${data['Current' + res]}/${data['Max' + res]}`;
+  container.appendChild(display);
+
+  const minus = createButton('-', () => {
+    if (data['Current' + res] > 0) data['Current' + res]--;
+    updateDisplay(res);
+  });
+  const plus = createButton('+', () => {
+    if (data['Current' + res] < data['Max' + res]) data['Current' + res]++;
+    updateDisplay(res);
+  });
+
+  container.append(minus, plus);
+  resourceControls.appendChild(container);
+});
+
+out.appendChild(resourceControls);
+
+// Stats
+const statsHeader = document.createElement('p');
+statsHeader.className = 'section-header';
+statsHeader.textContent = 'Stats';
+out.appendChild(statsHeader);
+
+stats.forEach(stat => {
+  const p = document.createElement('p');
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'stat-label';
+  labelSpan.textContent = stat;
+
+  const valueSpan = document.createElement('span');
+  valueSpan.className = 'stat-value';
+  valueSpan.textContent = data[stat];
+
+  const rollButtons = createRollButtons(stat);
+
+  const resultSpan = document.createElement('span');
+  resultSpan.className = 'roll-result';
+  resultSpan.setAttribute('data-stat', stat);
+
+  p.append(labelSpan, valueSpan, rollButtons, resultSpan);
+  out.appendChild(p);
+});
+
+// PDF export
+document.getElementById('downloadPDF').onclick = () => {
+  const doc = new jsPDF();
+  doc.setFont('Courier');
+  doc.setFontSize(16);
+  doc.text('A Fortaleza Character', 20, 20);
+
+  let y = 40;
+  charInfoKeys.forEach(key => {
+    doc.text(`${key}: ${data[key]}`, 20, y);
+    y += 10;
+  });
+
+  y += 5;
+  resources.forEach(res => {
+    doc.text(`${res}: ${data['Current' + res]}/${data['Max' + res]}`, 20, y);
+    y += 10;
+  });
+
+  y += 5;
+  stats.forEach(stat => {
+    doc.text(`${stat}: ${data[stat]}`, 20, y);
+    y += 10;
+  });
+
+  doc.save('fortaleza-character.pdf');
+};
+
+// Clear Results button resets all roll results
+document.getElementById('clearResults').onclick = () => {
+  document.querySelectorAll('#output span[data-stat]').forEach(span => {
+    span.textContent = '';
+    span.classList.remove('crit-hit', 'crit-fail');
+  });
+};
+
+function roll(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
+function rand(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+</script>
+
+</body>
+</html>

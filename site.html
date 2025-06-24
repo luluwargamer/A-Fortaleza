@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>A Fortaleza-Character Generator</title>
+
+  <style>
+    body { font-family: cyrilic; max-width: 400px; margin: 2rem auto; background: #111; color: #0f0; }
+    button { margin: 0.5rem 0.5rem 1rem 0; font-size: 1rem; padding: 0.5rem 1rem; background: #222; color: #0f0; border: 1px solid #0f0; cursor: pointer; }
+    .stat, #results p { margin: 0.3rem 0; }
+    #results { margin-top: 1rem; padding: 1rem; background: #000; border: 1px dashed #0f0; border-radius: 5px; }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <h1>A Fortaleza</h1>
+  <h2>Dungeon Dweller</h2>
+
+  <button onclick="location.reload()">🔁 Reroll</button>
+  <button id="downloadPDF">📄 Save as PDF</button>
+
+  <div id="output"></div>
+
+  <script>
+    const { jsPDF } = window.jspdf;
+
+    const stats = ['Strength', 'Agility', 'Perception', 'Toughness', 'Charisma', 'Fate'];
+    const data = {
+      Name: rand(['Rui', 'Bruno', 'Rodrigo', 'José','João', 'Miguel', 'Pedro', 'Lucas', 'Rafael', 'Gabriel', 'Tiago', 'Gonçalo', 'Diogo', 'Francisco', 'Henrique', 'Santiago', 'André', 'Vasco', 'Bruno', 'Daniel', 'Ricardo', 'Filipe', 'Carlos', 'Duarte', 'Tomás', 'Leandro', 'Artur', 'Simão', 'Jorge', 'Paulo', 'Manuel', 'Eduardo', 'Nuno', 'António', 'Álvaro', 'Samuel', 'Rodrigo', 'José', 'Matias', 'Baltazar', 'Guilherme', 'Martim', 'César', 'Valentim', 'Afonso', 'Lourenço', 'Estêvão', 'Baltazar', 'Inácio', 'Óscar', 'Gilberto', 'Maria', 'Ana', 'Beatriz', 'Leonor', 'Matilde', 'Sofia', 'Inês', 'Carolina', 'Mariana', 'Sara', 'Rita', 'Isabel', 'Joana', 'Diana', 'Catarina', 'Marta', 'Andreia', 'Luísa', 'Helena', 'Francisca', 'Bianca', 'Olívia', 'Clara', 'Alícia', 'Bruna', 'Camila', 'Gabriela', 'Isadora', 'Letícia', 'Natália', 'Patrícia', 'Daniela', 'Manuela', 'Raquel', 'Sílvia', 'Lorena', 'Ema', 'Vera', 'Filipa', 'Lara', 'Amanda', 'Carla', 'Susana', 'Vanessa', 'Fátima', 'Rosa', 'Aurora']),
+      Background: rand(['Hunter', 'Soldier']),
+      Weapon: rand(['Pistol 1AP shooting 3AP reload 2d4 piercing damage', 'Pistol blunderbuss 1AP shooting 3AP reload 4d4 piercing damage', 'Wristbreaker pistol 1AP shooting 3AP reload 2d6 piercing damage', 'Tribarrel pistol 1AP shooting 3AP reload 2d4 piercing damage Three shots (only loads one barrel at a time)', 'Carbine 1AP shooting 3AP reload 2d6 piercing damage', 'Blunderbuss 1AP shooting 3AP reload 3d6 piercing damage', 'Hand mortar 1AP shooting 3AP reload d piercing damage', 'Musket 1AP shooting 3AP reload 2d8 piercing damage', 'Two barrel musket 1AP shooting 3AP reload 2d8 piercing damage Two shots (only loads one barrel at a time)', 'Crossbow 1AP shooting 2AP reload d piercing damage', 'Bow 2AP to shoot 3AP reload 2d6 piercing damage', 'Butcher knife 2AP d4 slashing damage', 'Axe 2AP d6 slashing damage', 'Saber 2AP d6 slashing damage', 'Dagger 2AP d4 piercing damage', 'Bayonet 2AP d4 piercing damage', 'Rapier 2AP d6 piercing damage', 'Mace 2AP d6 bludgeoning damage', 'Two handed axe 3AP d8 slashing damage', 'Longsword 3AP d48 slashing/piercing damage', 'Spear 3AP d8 piercing damage', 'Warhammer 3AP bludgeoning damage']),
+      Motivation: rand(['Needs money', 'Seek glory']),
+      Backstorie: rand(['A sheperd ', 'A banker', 'A thief', 'Political refugee', 'A migrant']),
+    };
+
+    // Roll stats
+    stats.forEach(stat => data[stat] = roll(6));
+
+    // Derived stats
+    data.HP = data.Toughness + roll(6) + roll(6);
+    data.AP = data.Agility;
+
+    // Show on page
+    const out = document.getElementById('output');
+    for (const key in data) {
+      const p = document.createElement('p');
+      p.textContent = `${key}: ${data[key]}`;
+      out.appendChild(p);
+    }
+
+    // PDF export
+    document.getElementById('downloadPDF').onclick = () => {
+      const doc = new jsPDF();
+      doc.setFont('Courier');
+      doc.setFontSize(14);
+      doc.text('CY_BORG Character', 20, 20);
+
+      let y = 40;
+      for (const key in data) {
+        doc.text(`${key}: ${data[key]}`, 20, y);
+        y += 10;
+      }
+
+      doc.save('cyborg-character.pdf');
+    };
+
+    function roll(sides) {
+      return Math.floor(Math.random() * sides) + 1;
+    }
+
+    function rand(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+  </script>
+
+</body>
+</html>
